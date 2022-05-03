@@ -94,13 +94,17 @@ impl OpLogBuilder {
         let coll = client
             .database("local")
             .collection::<Document>(OP_LOG_COLLECTION_NAME);
+        let exclude_default_collections = doc! {"ns": {"$nin": ["config.system.sessions", "admin.system.keys"]}};
+
         let mut filter_options = FindOptions::default();
         filter_options.cursor_type = Some(CursorType::TailableAwait);
         filter_options.no_cursor_timeout = Some(true);
 
-        let exclude_default_collections = doc! {"ns": {"$ne": "config.system.sessions"}};
+        let count = coll.estimated_document_count(None).await;
+        filter_options.skip = Some(count.unwrap());
 
-        let find = coll.find(exclude_default_collections, filter_options).await;
+
+        let find = coll.find(None, filter_options).await;
 
         OpLog {
             cursor: find.unwrap(),
