@@ -34,6 +34,12 @@ pub enum Operation {
 impl Operation {
     fn new(doc: Document) -> Result<Operation> {
         let op = doc.get_str("op").unwrap();
+        let coll = doc.get_str("ns").unwrap().to_lowercase();
+
+        if coll != "performance-api.test" {
+            return Ok(Operation::Unknown {});
+        }
+
         match op {
             "i" => Operation::from_insert(doc),
             "u" => Operation::from_update(doc),
@@ -44,14 +50,14 @@ impl Operation {
     }
 
     fn from_insert(doc: Document) -> Result<Operation> {
-        let coll = doc.get_str("ns").unwrap();
+        let coll = doc.get_str("ns").unwrap().to_lowercase();
         let query = doc.get_document("o").unwrap();
 
         Ok(Operation::Insert { collection: coll.to_string(), query: query.to_owned() })
     }
 
     fn from_update(doc: Document) -> Result<Operation> {
-        let coll = doc.get_str("ns").unwrap();
+        let coll = doc.get_str("ns").unwrap().to_lowercase();
         let o = doc.get_document("o").unwrap();
         let o2 = doc.get_document("o2").unwrap();
         let diff = o.get_document("diff").unwrap();
@@ -61,7 +67,7 @@ impl Operation {
     }
 
     fn from_delete(doc: Document) -> Result<Operation> {
-        let coll = doc.get_str("ns").unwrap();
+        let coll = doc.get_str("ns").unwrap().to_lowercase();
         let query = doc.get_document("o").unwrap();
 
         Ok(Operation::Delete { collection: coll.to_string(), query: query.to_owned() })
@@ -94,7 +100,6 @@ impl OpLogBuilder {
         let coll = client
             .database("local")
             .collection::<Document>(OP_LOG_COLLECTION_NAME);
-        let exclude_default_collections = doc! {"ns": {"$nin": ["config.system.sessions", "admin.system.keys"]}};
 
         let mut filter_options = FindOptions::default();
         filter_options.cursor_type = Some(CursorType::TailableAwait);
