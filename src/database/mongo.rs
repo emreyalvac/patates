@@ -5,17 +5,29 @@ use mongodb::{bson::Document, Client, Cursor};
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use mongodb::bson::doc;
+use mongodb::bson::{DateTime, doc};
 
 const OP_LOG_COLLECTION_NAME: &str = "oplog.rs";
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Operation {
-    Insert {},
-    Update {},
-    Delete {},
+    Insert {
+        collection: String,
+        query: Document,
+    },
+    Update {
+        collection: String,
+        query: Document,
+        target_document: Document,
+    },
+    Delete {
+        collection: String,
+        query: Document,
+    },
+    NoOp {
+        message: String
+    },
     Unknown {},
-    NoOp {},
 }
 
 
@@ -23,12 +35,43 @@ impl Operation {
     fn new(doc: Document) -> Result<Operation> {
         let op = doc.get_str("op").unwrap();
         match op {
-            "i" => Ok(Operation::Insert {}),
-            "u" => Ok(Operation::Update {}),
-            "d" => Ok(Operation::Delete {}),
-            "n" => Ok(Operation::NoOp {}),
+            "i" => Operation::from_insert(doc),
+            "u" => Operation::from_update(doc),
+            "d" => Operation::from_delete(doc),
+            "n" => Operation::from_noop(doc),
             _ => Ok(Operation::Unknown {}),
         }
+    }
+
+    fn from_insert(doc: Document) -> Result<Operation> {
+        let coll = doc.get_str("ns").unwrap();
+        let query = doc.get_document("o").unwrap();
+
+        Ok(Operation::Insert { collection: coll.to_string(), query: query.to_owned() })
+    }
+
+    fn from_update(doc: Document) -> Result<Operation> {
+        let coll = doc.get_str("ns").unwrap();
+        let o = doc.get_document("o").unwrap();
+        let o2 = doc.get_document("o2").unwrap();
+        let diff = o.get_document("diff").unwrap();
+        let query = diff.get_document("u").unwrap();
+
+        Ok(Operation::Update { collection: coll.to_string(), query: query.to_owned(), target_document: o2.to_owned() })
+    }
+
+    fn from_delete(doc: Document) -> Result<Operation> {
+        let coll = doc.get_str("ns").unwrap();
+        let query = doc.get_document("o").unwrap();
+
+        Ok(Operation::Delete { collection: coll.to_string(), query: query.to_owned() })
+    }
+
+    fn from_noop(doc: Document) -> Result<Operation> {
+        let o = doc.get_document("o").unwrap();
+        let message = o.get_str("msg").unwrap_or("");
+
+        Ok(Operation::NoOp { message: message.to_string() })
     }
 }
 

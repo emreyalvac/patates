@@ -8,7 +8,7 @@ use crate::elastic::ElasticImpl;
 mod database;
 mod elastic;
 
-static POSTS_INDEX: &'static str = "AAAAAAA";
+static POSTS_INDEX: &'static str = "test";
 
 #[tokio::main]
 async fn main() -> mongodb::error::Result<()> {
@@ -17,13 +17,13 @@ async fn main() -> mongodb::error::Result<()> {
     let mut op_log = OpLog::new(&con).await;
     let elastic = ElasticImpl::new();
 
-    let index_result = elastic.create_index_if_not_exists(POSTS_INDEX.to_string()).await;
+    // let index_result = elastic.create_index_if_not_exists(POSTS_INDEX.to_string()).await;
 
-    println!("{index_result:?}");
+    // println!("{index_result:?}");
 
 
     while let Some(item) = op_log.next().await {
-        // println!("{:?}", item);
+        println!("{:?}", item);
     }
 
     Ok(())
