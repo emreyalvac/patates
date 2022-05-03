@@ -23,7 +23,7 @@ impl ElasticImpl {
         } else {
             let res = self.client.indices().create(IndicesCreateParts::Index(indice.to_lowercase().as_str())).send().await;
             match res {
-                Ok(_) => true
+                Ok(_) => true,
                 Err(err) => {
                     print!("Create indice error {:?}", err);
                     false
