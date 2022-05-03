@@ -5,6 +5,7 @@ use mongodb::{bson::Document, Client, Cursor};
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use mongodb::bson::doc;
 
 const OP_LOG_COLLECTION_NAME: &str = "oplog.rs";
 
@@ -14,6 +15,7 @@ pub enum Operation {
     Update {},
     Delete {},
     Unknown {},
+    NoOp {},
 }
 
 
@@ -24,6 +26,7 @@ impl Operation {
             "i" => Ok(Operation::Insert {}),
             "u" => Ok(Operation::Update {}),
             "d" => Ok(Operation::Delete {}),
+            "n" => Ok(Operation::NoOp {}),
             _ => Ok(Operation::Unknown {}),
         }
     }
@@ -51,7 +54,10 @@ impl OpLogBuilder {
         let mut filter_options = FindOptions::default();
         filter_options.cursor_type = Some(CursorType::TailableAwait);
         filter_options.no_cursor_timeout = Some(true);
-        let find = coll.find(None, filter_options).await;
+
+        let exclude_default_collections = doc! {"ns": {"$ne": "config.system.sessions"}};
+
+        let find = coll.find(exclude_default_collections, filter_options).await;
 
         OpLog {
             cursor: find.unwrap(),
