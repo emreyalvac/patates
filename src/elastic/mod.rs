@@ -15,21 +15,20 @@ impl ElasticImpl {
         Ok(Self { client })
     }
 
-    pub async fn check_index_is_exist(&self, index: &String) -> bool {
-        let exists = self.client.indices().exists(IndicesExistsParts::Index(&[index.as_str()])).send().await.unwrap();
-        return exists.status_code().is_success();
+    pub async fn check_index_is_exist(&self, index: &String) -> Result<bool> {
+        let exists = self.client.indices().exists(IndicesExistsParts::Index(&[index.as_str()])).send().await?;
+        return Ok(exists.status_code().is_success());
     }
 
-    pub async fn create_index_if_not_exists(&self, index: String) -> bool {
-        if self.check_index_is_exist(&index).await {
-            return true;
+    pub async fn create_index_if_not_exists(&self, index: String) -> Result<bool> {
+        if self.check_index_is_exist(&index).await? {
+            return Ok(true);
         } else {
             let res = self.client.indices().create(IndicesCreateParts::Index(index.as_str())).send().await;
             match res {
-                Ok(_) => true,
+                Ok(_) => Ok(false),
                 Err(err) => {
-                    println!("Create index error {:?}", err);
-                    false
+                    Err(Error::from(err))
                 }
             }
         }

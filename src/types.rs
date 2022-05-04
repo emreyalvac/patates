@@ -12,6 +12,7 @@ pub enum Error {
     UnknownOperation(String),
     SerdeError(serde_json::Error),
     InvalidOperation,
+    ElasticError(elasticsearch::Error),
     ElasticUpdateOperation,
     ElasticInsertOperation,
     ElasticDeleteOperation,
@@ -32,5 +33,11 @@ impl From<ValueAccessError> for Error {
 impl From<MongoDbError> for Error {
     fn from(original: MongoDbError) -> Self {
         Database(original)
+    }
+}
+
+impl From<elasticsearch::Error> for Error {
+    fn from(original: elasticsearch::Error) -> Self {
+        Error::ElasticError(original)
     }
 }
