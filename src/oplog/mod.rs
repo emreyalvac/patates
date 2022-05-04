@@ -1,13 +1,14 @@
 use futures::{ready, Stream};
-use mongodb::error::Result;
 use mongodb::options::{CursorType, FindOptions};
 use mongodb::{bson::Document, Client, Cursor};
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use mongodb::bson::{DateTime, doc};
+use crate::types::Result;
 
 const OP_LOG_COLLECTION_NAME: &str = "oplog.rs";
+const LOCAL_DATABASE_NAME: &str = "local";
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Operation {
@@ -33,8 +34,8 @@ pub enum Operation {
 
 impl Operation {
     fn new(doc: Document) -> Result<Operation> {
-        let op = doc.get_str("op").unwrap();
-        let coll = doc.get_str("ns").unwrap().to_lowercase();
+        let op = doc.get_str("op")?;
+        let coll = doc.get_str("ns")?.to_lowercase();
 
         if coll != "performance-api.test" {
             return Ok(Operation::Unknown {});
@@ -50,32 +51,32 @@ impl Operation {
     }
 
     fn from_insert(doc: Document) -> Result<Operation> {
-        let coll = doc.get_str("ns").unwrap().to_lowercase();
-        let query = doc.get_document("o").unwrap();
+        let coll = doc.get_str("ns")?.to_lowercase();
+        let query = doc.get_document("o")?;
 
         Ok(Operation::Insert { collection: coll.to_string(), query: query.to_owned() })
     }
 
     fn from_update(doc: Document) -> Result<Operation> {
-        let coll = doc.get_str("ns").unwrap().to_lowercase();
-        let o = doc.get_document("o").unwrap();
-        let o2 = doc.get_document("o2").unwrap();
-        let diff = o.get_document("diff").unwrap();
-        let query = diff.get_document("u").unwrap();
+        let coll = doc.get_str("ns")?.to_lowercase();
+        let o = doc.get_document("o")?;
+        let o2 = doc.get_document("o2")?;
+        let diff = o.get_document("diff")?;
+        let query = diff.get_document("u")?;
 
         Ok(Operation::Update { collection: coll.to_string(), query: query.to_owned(), target_document: o2.to_owned() })
     }
 
     fn from_delete(doc: Document) -> Result<Operation> {
-        let coll = doc.get_str("ns").unwrap().to_lowercase();
-        let query = doc.get_document("o").unwrap();
+        let coll = doc.get_str("ns")?.to_lowercase();
+        let query = doc.get_document("o")?;
 
         Ok(Operation::Delete { collection: coll.to_string(), query: query.to_owned() })
     }
 
     fn from_noop(doc: Document) -> Result<Operation> {
-        let o = doc.get_document("o").unwrap();
-        let message = o.get_str("msg").unwrap_or("");
+        let o = doc.get_document("o")?;
+        let message = o.get_str("msg")?;
 
         Ok(Operation::NoOp { message: message.to_string() })
     }
@@ -98,15 +99,15 @@ struct OpLogBuilder {}
 impl OpLogBuilder {
     async fn new(client: &Client) -> OpLog {
         let coll = client
-            .database("local")
+            .database(LOCAL_DATABASE_NAME)
             .collection::<Document>(OP_LOG_COLLECTION_NAME);
 
         let mut filter_options = FindOptions::default();
         filter_options.cursor_type = Some(CursorType::TailableAwait);
         filter_options.no_cursor_timeout = Some(true);
 
-        let count = coll.estimated_document_count(None).await;
-        filter_options.skip = Some(count.unwrap());
+        let count = coll.estimated_document_count(None).await.unwrap_or(0);
+        filter_options.skip = Some(count);
 
         let find = coll.find(None, filter_options).await;
 
