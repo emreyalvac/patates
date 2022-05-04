@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
                 elastic.insert_index_data(collection, ser, id).await?;
             }
             Operation::Update { query, collection, target_document } => {
-                let mut ser = serde_json::to_value(&query).unwrap();
+                let mut ser = serde_json::to_value(&query)?;
                 let update_query = json!({"doc": ser});
                 let id = target_document.get_object_id("_id")?.to_string();
                 elastic.update_index_data(collection, update_query, id).await?;
