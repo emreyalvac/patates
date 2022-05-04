@@ -1,4 +1,4 @@
-use elasticsearch::{CreateParts, Elasticsearch, IndexParts, UpdateParts};
+use elasticsearch::{CreateParts, DeleteParts, Elasticsearch, IndexParts, UpdateParts};
 use elasticsearch::indices::{IndicesCreateParts, IndicesExistsParts};
 use serde_json::Value;
 
@@ -34,12 +34,14 @@ impl ElasticImpl {
     }
 
     pub async fn update_index_data(&self, index: String, data: Value, id: String) {
-        let response = self.client.update(UpdateParts::IndexId(index.as_str(), id.as_str())).body(data).send().await;
-        response.unwrap().text().await;
+        self.client.update(UpdateParts::IndexId(index.as_str(), id.as_str())).body(data).send().await;
     }
 
     pub async fn create_index_data(&self, index: String, data: Value, id: String) {
-        let response = self.client.index(IndexParts::IndexTypeId(index.as_str(), "_create", id.as_str())).body(data).send().await;
-        response.unwrap().text().await;
+        self.client.index(IndexParts::IndexTypeId(index.as_str(), "_create", id.as_str())).body(data).send().await;
+    }
+
+    pub async fn delete_index_data(&self, index: String, id: String) {
+        self.client.delete(DeleteParts::IndexId(index.as_str(), id.as_str())).send().await;
     }
 }

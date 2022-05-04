@@ -9,8 +9,6 @@ use crate::elastic::ElasticImpl;
 mod database;
 mod elastic;
 
-static POSTS_INDEX: &'static str = "test";
-
 #[tokio::main]
 async fn main() -> mongodb::error::Result<()> {
     let options = ClientOptions::default();
@@ -36,7 +34,8 @@ async fn main() -> mongodb::error::Result<()> {
                 elastic.update_index_data(collection, update_query, id).await;
             }
             Operation::Delete { query, collection } => {
-                println!("delete {} {}", collection, query)
+                let id = query.get_object_id("_id").unwrap().to_string();
+                elastic.delete_index_data(collection, id).await;
             }
             _ => {}
         }
