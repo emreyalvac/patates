@@ -108,7 +108,6 @@ impl OpLogBuilder {
         let count = coll.estimated_document_count(None).await;
         filter_options.skip = Some(count.unwrap());
 
-
         let find = coll.find(None, filter_options).await;
 
         OpLog {
