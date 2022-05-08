@@ -1,0 +1,3 @@
+mongo_url = "mongodb://127.0.0.1:27017"
+change_stream_namespaces = ["performance-api.Test"]
+replay = false

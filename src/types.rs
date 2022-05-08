@@ -1,7 +1,7 @@
+use crate::types::Error::Database;
 use mongodb::bson::document::ValueAccessError;
 use mongodb::error::Error as MongoDbError;
 use std::result;
-use crate::types::Error::Database;
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -11,8 +11,9 @@ pub enum Error {
     MissingField(ValueAccessError),
     UnknownOperation(String),
     SerdeError(serde_json::Error),
-    InvalidOperation,
     ElasticError(elasticsearch::Error),
+    StdError(std::io::Error),
+    InvalidOperation,
     ElasticUpdateOperation,
     ElasticInsertOperation,
     ElasticDeleteOperation,
@@ -39,5 +40,11 @@ impl From<MongoDbError> for Error {
 impl From<elasticsearch::Error> for Error {
     fn from(original: elasticsearch::Error) -> Self {
         Error::ElasticError(original)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(original: std::io::Error) -> Self {
+        Error::StdError(original)
     }
 }

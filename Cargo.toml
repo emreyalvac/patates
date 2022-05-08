@@ -2,10 +2,10 @@
 name = "patates"
 version = "0.1.0"
 edition = "2021"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+toml = "0.5.9"
 mongodb = { version = "2.2.1" }
 elasticsearch = "7.14.0-alpha.1"
 tokio = { version = "1.18.0", features = ["full"] }
