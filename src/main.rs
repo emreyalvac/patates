@@ -16,14 +16,12 @@ async fn main() -> Result<()> {
     let mut op_log = OpLog::new(config.clone()).await?;
     let elastic = ElasticImpl::new(config.clone())?;
 
-    println!("{config:?}");
-
     while let Some(item) = op_log.next().await {
         let res = item?;
 
         match res {
             Operation::Create { collection } => {
-                elastic.create_index_if_not_exists(collection).await;
+                elastic.create_index_if_not_exists(collection).await?;
             }
             Operation::Insert { query, collection } => {
                 let mut ser = serde_json::to_value(&query)?;
@@ -38,7 +36,7 @@ async fn main() -> Result<()> {
             } => {
                 let ser = serde_json::to_value(&query)?;
                 let update_query = json!({ "doc": ser });
-                let id = target_document.get_object_id("ss")?.to_string();
+                let id = target_document.get_object_id("_id")?.to_string();
                 elastic
                     .update_index_data(collection, update_query, id)
                     .await?;

@@ -10,12 +10,28 @@ pub struct Config {
     pub replay: Option<bool>,
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            mongo_url: Some("mongodb://127.0.0.1:27017".to_owned()),
+            change_stream_namespaces: Some(vec![]),
+            replay: Some(false),
+        }
+    }
+}
+
 impl Config {
     pub fn new(path: &str) -> Result<Self> {
-        let data = fs::read_to_string(path)?;
+        return match fs::read_to_string(path) {
+            Ok(data) => {
+                let decoded: Self = toml::from_str(data.as_str()).unwrap();
+                Ok(decoded)
+            }
+            Err(_) => {
+                println!("patates: Config file (patates.toml) not found. Default values initialized.");
 
-        let decoded: Self = toml::from_str(data.as_str()).unwrap();
-
-        Ok(decoded)
+                Ok(Self::default())
+            }
+        };
     }
 }

@@ -36,22 +36,22 @@ pub enum Operation {
 }
 
 impl Operation {
-    fn new(doc: Document) -> Result<Operation> {
-        let _op = doc.get_str("op")?;
-        let _coll = doc.get_str("ns")?;
+    fn new(doc: Document, config: &Config) -> Result<Operation> {
+        let op = doc.get_str("op")?;
+        let coll = doc.get_str("ns")?;
 
-        println!("{doc:?}");
+        let change_stream_namespaces = config.change_stream_namespaces.as_ref().unwrap();
+        if !change_stream_namespaces.contains(&coll.to_string()) || change_stream_namespaces.is_empty() {
+            return Ok(Operation::Unknown {});
+        }
 
-        Ok(Operation::Unknown {})
-
-        /*match op {
+        match op {
             "c" => Operation::from_create(doc),
             "i" => Operation::from_insert(doc),
             "u" => Operation::from_update(doc),
             "d" => Operation::from_delete(doc),
-            "n" => Operation::from_noop(doc),
-            _ => ,
-        }*/
+            _ => Ok(Operation::Unknown {}),
+        }
     }
 
     fn from_create(doc: Document) -> Result<Operation> {
@@ -109,13 +109,14 @@ impl Operation {
 #[derive(Debug)]
 pub struct OpLog {
     pub cursor: Cursor<Document>,
+    config: Config,
 }
 
 impl OpLog {
-    pub async fn new(_config: Config) -> Result<OpLog> {
+    pub async fn new(config: Config) -> Result<OpLog> {
         let options = ClientOptions::default();
         let client = Client::with_options(options)?;
-        Ok(OpLogBuilder::new(&client).await)
+        Ok(OpLogBuilder::new(&client, config).await)
     }
 }
 
@@ -123,7 +124,7 @@ impl OpLog {
 struct OpLogBuilder {}
 
 impl OpLogBuilder {
-    async fn new(client: &Client) -> OpLog {
+    async fn new(client: &Client, config: Config) -> OpLog {
         let coll = client
             .database(LOCAL_DATABASE_NAME)
             .collection::<Document>(OP_LOG_COLLECTION_NAME);
@@ -139,6 +140,7 @@ impl OpLogBuilder {
 
         OpLog {
             cursor: find.unwrap(),
+            config,
         }
     }
 }
@@ -148,11 +150,10 @@ impl Stream for OpLog {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
-
         loop {
             let ret = if let Some(res) = ready!(Pin::new(&mut this.cursor).poll_next(cx)) {
                 match res {
-                    Ok(doc) => match Operation::new(doc) {
+                    Ok(doc) => match Operation::new(doc, &this.config) {
                         Ok(res) => Some(Ok(res)).into(),
                         Err(err) => Some(Err(err)).into(),
                     },
