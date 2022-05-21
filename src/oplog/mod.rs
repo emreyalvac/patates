@@ -77,13 +77,18 @@ impl Operation {
         let o = doc.get_document("o")?;
         let o2 = doc.get_document("o2")?;
         let diff = o.get_document("diff")?;
-        let query = diff.get_document("u")?;
-
-        Ok(Operation::Update {
-            collection: coll,
-            query: query.to_owned(),
-            target_document: o2.to_owned(),
-        })
+        match diff.get_document("u") {
+            Ok(query) => {
+                Ok(Operation::Update {
+                    collection: coll,
+                    query: query.to_owned(),
+                    target_document: o2.to_owned(),
+                })
+            }
+            Err(_) => {
+                Ok(Operation::Unknown {})
+            }
+        }
     }
 
     fn from_delete(doc: Document) -> Result<Operation> {
